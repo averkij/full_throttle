@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#100f0d">
+  <meta name="description" content="Full Throttle: Байк обреченный. Почини байк, найди улики и разоблачи Рипбургера. Квест на русском с автосохранением.">
+  <title>Full Throttle — Байк обреченный</title>
+  <link rel="icon" href="assets/favicon.png" type="image/png">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="intro.css">
+  <link rel="preload" href="assets/new-rocker-regular.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/intro-highway.png" as="image">
+</head>
+<body>
+  <section id="intro" class="intro" role="dialog" aria-modal="true" aria-labelledby="intro-title" hidden>
+    <div class="intro-art intro-highway" aria-hidden="true"></div>
+    <div class="intro-art intro-kickstand" aria-hidden="true"></div>
+    <div class="intro-shade" aria-hidden="true"></div>
+    <div class="intro-letterbox intro-letterbox-top" aria-hidden="true"></div>
+    <div class="intro-letterbox intro-letterbox-bottom" aria-hidden="true"></div>
+    <div class="intro-title-card">
+      <h1 id="intro-title" class="intro-title"><span>FULL</span><span>THROTTLE</span></h1>
+      <p class="intro-subtitle">БАЙК ОБРЕЧЕННЫЙ</p>
+      <p class="intro-tagline">Бензин. Братство. Свобода.</p>
+      <div class="intro-actions">
+        <button id="intro-start" class="primary-button">Завести мотор <span data-icon="arrow"></span></button>
+        <button id="intro-continue" class="secondary-button" hidden>Продолжить поездку</button>
+      </div>
+    </div>
+    <div class="intro-story" aria-live="polite" aria-atomic="true"><p id="intro-line"></p><p id="intro-line-secondary"></p></div>
+    <div class="intro-controls">
+      <div class="intro-playback" hidden>
+        <div class="intro-reel" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+      </div>
+      <div class="intro-toolbar" role="group" aria-label="Управление вступлением">
+        <button id="intro-sound" class="intro-utility intro-icon-button" aria-label="Включить звук" title="Включить звук" aria-pressed="false"><span data-icon="muted"></span></button>
+        <button id="intro-pause" class="intro-utility intro-icon-button" aria-label="Пауза" title="Пауза" aria-pressed="false" hidden><span data-icon="pause"></span></button>
+        <button id="intro-skip" class="intro-utility" hidden>Пропустить</button>
+      </div>
+    </div>
+  </section>
+  <div class="app-shell">
+    <header class="masthead">
+      <a class="wordmark" href="./" aria-label="Full Throttle — главная"><span class="brand-mark" aria-hidden="true">ϟ</span><span>FULL THROTTLE<small>БАЙК ОБРЕЧЕННЫЙ</small></span></a>
+      <nav class="top-actions" aria-label="Управление игрой">
+        <button id="audio-button" class="icon-button" title="Включить звук" aria-label="Включить звук" aria-pressed="false"><span data-icon="sound"></span></button>
+        <button id="journal-button" class="text-button"><span data-icon="journal"></span><span>Журнал</span><kbd>J</kbd></button>
+        <button id="menu-button" class="icon-button" title="Меню игры" aria-label="Открыть меню"><span data-icon="menu"></span></button>
+      </nav>
+    </header>
+
+    <main>
+      <section class="game-frame" aria-label="Игровое поле">
+        <div class="scene" id="scene">
+          <canvas id="scene-canvas" width="1536" height="1024" aria-hidden="true"></canvas>
+          <div class="scene-grain" aria-hidden="true"></div>
+          <div class="scene-vignette" aria-hidden="true"></div>
+          <div class="scene-topline">
+            <h1 class="scene-location" id="scene-name">Бар «Кикстэнд»</h1>
+            <div class="scene-tools"><button id="hotspot-button" hidden aria-pressed="false" title="Показать активные объекты (Пробел)"><span data-icon="eye"></span><span>Показать объекты</span></button><button id="fullscreen-button" class="icon-button" title="На весь экран (F)" aria-label="На весь экран" aria-pressed="false"><span data-icon="expand"></span></button></div>
+          </div>
+          <div id="hotspots" class="hotspots" aria-label="Объекты в этой локации"></div>
+          <div class="scene-caption" id="scene-caption"><span>БЕН</span><p>Помню типа в костюме. Паршивую сделку.<br>А потом кто-то выключил свет.</p></div>
+          <div class="travel-edges" id="travel-edges"></div>
+          <div id="scene-toast" class="scene-toast" role="status"></div>
+          <div class="scene-bottomline"><span id="hover-label">Глушь. Начни с осмотра.</span></div>
+        </div>
+
+        <section class="conversation" aria-label="Диалог">
+          <div class="portrait"><canvas id="portrait-canvas" width="192" height="208" aria-hidden="true"></canvas><span id="speaker">БЕН</span></div>
+          <div class="dialogue-content"><button id="voice-replay" class="voice-replay" hidden aria-label="Прослушать реплику" title="Прослушать реплику"><span data-icon="sound"></span></button><p id="dialogue-text" aria-live="polite">Банда исчезла. Ключи исчезли. Головная боль — на месте. Кто-то здесь точно что-то знает.</p><div id="dialogue-choices" class="dialogue-choices"></div></div>
+        </section>
+
+        <div class="control-deck">
+          <section class="actions-section" aria-label="Выбрать действие"><div class="deck-label">Действия</div><div class="verbs" id="verbs">
+            <button data-verb="look" class="verb active" aria-pressed="true"><span data-icon="eye"></span><span>Осмотр</span><kbd>1</kbd></button>
+            <button data-verb="use" class="verb" aria-pressed="false"><span data-icon="hand"></span><span>Действие</span><kbd>2</kbd></button>
+            <button data-verb="talk" class="verb" aria-pressed="false"><span data-icon="talk"></span><span>Говорить</span><kbd>3</kbd></button>
+            <button data-verb="kick" class="verb" aria-pressed="false"><span data-icon="boot"></span><span>Пнуть</span><kbd>4</kbd></button>
+          </div></section>
+          <section class="inventory-section" aria-label="Инвентарь"><div class="deck-label">Карманы</div><div class="inventory" id="inventory"></div></section>
+          <button id="map-button" class="map-button"><span data-icon="map"></span><span>Карта дорог</span><kbd>M</kbd></button>
+        </div>
+        <div class="quest-bar">
+          <p id="objective-text">Найди ключи. Найди свою банду.</p>
+          <span id="save-status" class="save-status" role="status"><i></i> Автосохранение</span>
+          <button id="hint-button" class="hint-button"><span data-icon="bulb"></span>Подсказка</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="modal" aria-labelledby="modal-title"><div class="modal-header"><span class="eyebrow" id="modal-eyebrow">FULL THROTTLE</span><button id="close-modal" class="icon-button" aria-label="Закрыть окно">×</button></div><div id="modal-body"></div></dialog>
+  <noscript><div class="noscript">Для этой игры нужен JavaScript. Включи его в браузере — и в путь.</div></noscript>
+  <script type="module" src="src/game.js"></script>
+</body>
+</html>
