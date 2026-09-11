@@ -4,6 +4,12 @@
 // exact pixels. Curves follow bodywork; separate subpaths preserve narrow props
 // and holes instead of filling their bounding rectangle. See ART-HIGHLIGHTS.md.
 export const SCENERY_MASKS = {
+  proving:{
+    kiosk:{bounds:[105,430,242,161],path:'M 108 431 L 345 434 L 345 575 L 328 589 L 106 591 Z'},
+    warning:{bounds:[619,428,90,186],path:'M 621 430 L 706 432 L 708 551 L 686 553 L 686 598 L 675 601 L 674 554 L 641 553 L 642 612 L 631 612 L 632 553 L 620 551 Z'},
+    minefield:{bounds:[664,704,725,195],path:'M 680 755 C 840 696 1130 710 1304 704 L 1389 868 C 1155 884 900 899 664 885 Z'},
+    serviceGate:{bounds:[1200,343,249,178],path:'M 1202 345 L 1447 343 L 1446 502 L 1223 520 L 1225 366 L 1201 366 Z'}
+  },
   kickstand: {
     dumpster: {
       bounds:[0,512,356,273],

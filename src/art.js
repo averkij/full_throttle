@@ -1,5 +1,7 @@
 import { SCENES, objects } from './engine.js';
-import { bodies, portraits, itemFrames, FORKS_FRAME, sceneSprites } from './scene-layout.js';
+import { bodies, portraits, itemFrames, FORKS_FRAME, BUNNY_FRAMES, sceneSprites } from './scene-layout.js';
+import {bunnyProgress} from './bunny-quest.js';
+import {createBunnyEffects} from './bunny-effects.js';
 import { createHighlightFade, createSpriteHighlights } from './highlight.js';
 import { SCENERY_MASKS, sceneryBox, createSceneryMasks } from './scenery-masks.js';
 import { createWalker, walkSprite } from './walk-cycle.js';
@@ -26,7 +28,10 @@ const radio=loadAsset('radio.png');
 const walking=loadAsset('ben-walk.png');
 const forks=loadAsset('forks.png');
 const cabinet=loadAsset('cabinet.png');
-export const artworkReady=Promise.all([backgrounds.promise,yardBackground.promise,corleyBackground.promise,characters.promise,props.promise,items.promise,radio.promise,walking.promise,forks.promise,cabinet.promise]);
+const provingBackground=loadAsset('proving-ground.png');
+const provingOpenBackground=loadAsset('proving-ground-open.png');
+const bunnyProps=loadAsset('bunny-props.png');
+export const artworkReady=Promise.all([backgrounds.promise,yardBackground.promise,corleyBackground.promise,characters.promise,props.promise,items.promise,radio.promise,walking.promise,forks.promise,cabinet.promise,provingBackground.promise,provingOpenBackground.promise,bunnyProps.promise]);
 
 function rect(c,x,y,w,h,color){c.fillStyle=color;c.fillRect(x,y,w,h);}
 function oval(c,x,y,rx,ry,color){c.fillStyle=color;c.beginPath();c.ellipse(x,y,rx,ry,0,0,Math.PI*2);c.fill();}
@@ -37,7 +42,7 @@ function illustration(c,asset,frame,x,feet,height,stretch=1,flip=false) {
   c.drawImage(asset.image,sx,sy,sw,sh,-width/2,-height,width,height);c.restore();
 }
 export function drawItem(canvas,id) {
-  const asset=id==='forks'?forks:items,frame=id==='forks'?FORKS_FRAME:itemFrames[id];
+  const asset=BUNNY_FRAMES[id]?bunnyProps:id==='forks'?forks:items,frame=BUNNY_FRAMES[id]|| (id==='forks'?FORKS_FRAME:itemFrames[id]);
   const draw=()=>{
     const c=canvas.getContext('2d');c.clearRect(0,0,canvas.width,canvas.height);
     if(!asset.ready||!frame)return;
@@ -92,12 +97,13 @@ export function createRenderer(canvas,getState) {
   c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';
   let sceneId=null,actorState=null,reduced=matchMedia('(prefers-reduced-motion: reduce)').matches,raf,lastTime=null,stretch=1;
   const walker=createWalker(61,87,reduced);
+  const bunnyEffects=createBunnyEffects();let visibleBunnyStage=0;
   const fade=createHighlightFade();
   const highlights=createSpriteHighlights(()=>document.createElement('canvas'));
   const sceneryMasks=createSceneryMasks(()=>document.createElement('canvas'));
-  const assets={characters,props,items,radio,forks,cabinet};
+  const assets={characters,props,items,radio,forks,cabinet,bunnyProps};
   function syncActor(s){
-    if(sceneId!==s.scene||actorState!==s){sceneId=s.scene;actorState=s;fade.clear();walker.reset(...SCENES[s.scene].spawn);lastTime=null;}
+    if(sceneId!==s.scene||actorState!==s){sceneId=s.scene;actorState=s;fade.clear();bunnyEffects.clear();visibleBunnyStage=bunnyProgress(s);walker.reset(...(s.scene==='proving'&&visibleBunnyStage?[34+visibleBunnyStage*12,86]:SCENES[s.scene].spawn));lastTime=null;}
   }
   const resize=()=>{const bounds=canvas.getBoundingClientRect();stretch=bounds.height?bounds.width/bounds.height/1.5:1;};
   const observer=new ResizeObserver(resize);observer.observe(canvas);resize();
@@ -106,8 +112,17 @@ export function createRenderer(canvas,getState) {
     const s=getState(),scene=SCENES[s.scene];
     syncActor(s);
     const background=s.scene==='yard'?yardBackground:s.scene==='corley'?corleyBackground:backgrounds;
-    if(background.ready)c.drawImage(background.image,scene.x*768,scene.y*512,768,512,0,0,768,512);
+    if(s.scene==='proving'&&provingBackground.ready){
+      c.drawImage(provingBackground.image,0,0,1536,1024,0,0,768,512);
+      // Only replace the hatch patch; the edited asset cannot make scenery jump.
+      if(s.flags.kioskOpen&&provingOpenBackground.ready)c.drawImage(provingOpenBackground.image,107,436,234,139,53.5,218,117,69.5);
+    }
+    else if(background.ready)c.drawImage(background.image,scene.x*768,scene.y*512,768,512,0,0,768,512);
     else rect(c,0,0,768,512,'#26302a');
+    if(s.scene==='proving'){
+      const {stage}=bunnyEffects.draw(c,s,bunnyProps,time,reduced,stretch);
+      if(stage!==visibleBunnyStage){visibleBunnyStage=stage;walker.moveTo(34+stage*12);}
+    }
     const delta=lastTime===null?16:time-lastTime;
     const actor=walker.step(delta,stretch);fade.step(delta,reduced);
     lastTime=time;
@@ -123,6 +138,13 @@ export function createRenderer(canvas,getState) {
       if(asset.ready)c.drawImage(asset.image,...sprite.frame,box.x,box.y,box.w,box.h);
       highlights.draw(c,asset,sprite.frame,box,fade.opacity(sprite.id));
     }
+    // Reuse actual painted grille strips in front of the display toys. The
+    // narrow gap at counter level remains free for the demonstration car.
+    if(s.scene==='proving'&&!s.flags.kioskOpen&&provingBackground.ready){
+      for(const x of [129,153,180,207,234,262,290,318])c.drawImage(provingBackground.image,x,448,5,109,x/2,224,2.5,54.5);
+      for(const y of [476,522])c.drawImage(provingBackground.image,111,y,222,5,55.5,y/2,111,2.5);
+      c.drawImage(provingBackground.image,226,506,20,33,113,253,10,16.5);
+    }
     const actorX=actor.x*7.68,actorFeet=actor.y*5.12;
     oval(c,actorX,actorFeet,28/stretch,4,'#091416b0');
     if(actor.moving&&walking.ready){
@@ -137,6 +159,8 @@ export function createRenderer(canvas,getState) {
   }
   raf=requestAnimationFrame(draw);
   return {
+    playEffect(result){syncActor(getState());bunnyEffects.start(result,performance.now(),reduced);},
+    isBusy(){return bunnyEffects.busy(performance.now());},
     setHighlight(id){syncActor(getState());fade.select(id);},
     objectBounds(id){
       const s=getState(),sprite=sceneSprites(s,stretch).find(item=>item.id===id);
@@ -159,8 +183,8 @@ export function createRenderer(canvas,getState) {
       }
       return null;
     },
-    walkTo(x){syncActor(getState());walker.moveTo(x);},
-    setReduced(value){reduced=value;walker.setReduced(value);},
+    walkTo(x){syncActor(getState());if(bunnyEffects.busy(performance.now()))return;walker.moveTo(getState().scene==='proving'?Math.min(x,34+visibleBunnyStage*12):x);},
+    setReduced(value){reduced=value;walker.setReduced(value);if(value)bunnyEffects.clear();},
     stop(){cancelAnimationFrame(raf);observer.disconnect();}
   };
 }

@@ -7,11 +7,12 @@ export const ROOT = path.resolve(fileURLToPath(new URL('../', import.meta.url)))
 
 // Only files named here can enter the public site. Add new game assets explicitly.
 const modules = [
-  'art', 'context-menu', 'debug-mode', 'engine', 'fullscreen', 'game', 'highlight',
+  'art', 'bunny-effects', 'bunny-quest', 'context-menu', 'debug-mode', 'engine', 'fullscreen', 'game', 'highlight',
   'intro', 'intro-score', 'inventory-cursor', 'narration', 'ru', 'scene-layout',
   'scenery-masks', 'voice-player', 'voice-samples', 'walk-cycle'
 ];
 const artwork = [
+  'bunny-props.png', 'proving-ground.png', 'proving-ground-open.png',
   'ben-walk.png', 'blackened-steel.png', 'cabinet.png', 'characters-v2.png',
   'favicon.png', 'forks.png', 'intro-highway.png', 'items-v2.png', 'radio.png',
   'scenes-corley-clean.png', 'scenes-yard-clean.png', 'scenes.png', 'vehicles-v2.png',

@@ -1,6 +1,8 @@
 // Percentages of the scene: both the canvas prop and DOM hitbox use this box.
 // The radio sits on the workbench, to the left of the open garage shutter.
 export const GARAGE_RADIO = Object.freeze({x:40, y:45, w:12, h:11});
+// Measured independently: the generated source is not a perfectly regular grid.
+export const BUNNY_FRAMES={bunny:[25,15,430,462],bunnies:[487,40,548,458],car:[1040,15,490,465],remote:[28,479,450,528],kioskKey:[565,522,435,480],crater:[1032,613,490,345]};
 
 export function fitProp(frame, box, stretch = 1) {
   const width = box.w * 7.68, height = box.h * 5.12;
@@ -52,6 +54,12 @@ export function sceneSprites(state, stretch=1) {
     sprites.push({id:'cabinet',asset:'cabinet',frame:source,
       box:{x:529-anchor[0]*scale/stretch,y:414-anchor[1]*scale,w:source[2]*scale/stretch,h:source[3]*scale},
       shadow:[529,413,48/stretch,5]});
+  }
+  if(state.scene==='proving'){
+    person('guard','GUARD',279,392,112);
+    add('remote','bunnyProps',BUNNY_FRAMES.remote,79,291,30);
+    if(!state.flags.kioskKeyFound)add('toyCar','bunnyProps',BUNNY_FRAMES.car,146,281,33);
+    if(!state.flags.bunniesTaken)add('bunnyBox','bunnyProps',BUNNY_FRAMES.bunnies,104,284,42);
   }
   return sprites;
 }

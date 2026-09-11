@@ -1,9 +1,11 @@
 import { GARAGE_RADIO } from './scene-layout.js';
+import {BUNNY_FLAGS,BUNNY_ITEMS,BUNNY_SCENE,bunnyProgress,bunnyObjects,bunnyObjective,bunnyInteract,bunnyChoose,bunnyHints} from './bunny-quest.js';
 
 // Pure game rules: the complete adventure can be played and tested without a DOM.
 export const SAVE_KEY = 'full-throttle-dust-deception-v1';
 export const SETTINGS_KEY = 'full-throttle-dust-settings-v1';
 export const ITEMS = {
+  ...BUNNY_ITEMS,
   keys: { name: 'Bike keys', description: 'My Corley keys. The only jewelry I need.' },
   hose: { name: 'Siphon hose', description: 'A length of rubber hose. Smells like the last decade.' },
   jerky: { name: 'Beef jerky', description: 'Biker food. Or a peace offering to something with bigger teeth.' },
@@ -21,14 +23,16 @@ export const SCENES = {
   kickstand: { name: 'The Kickstand', short: 'THE KICKSTAND', coordinate: 'MELONWEED OUTSKIRTS · 19:42', index: 0, x: 0, y: 0, description: 'A bar, a bad headache, and the start of trouble.', arrival: 'The Kickstand. Where the drinks are warm and the welcome is colder.', spawn: [61, 87] },
   garage: { name: 'Mo’s Garage', short: 'MO’S GARAGE', coordinate: 'MELONWEED · 20:16', index: 1, x: 1, y: 0, description: 'Good tools. Better company. Your only way back.', arrival: 'Mo’s garage. Smells like gasoline and second chances.', spawn: [42, 88] },
   yard: { name: 'The Salvage Yard', short: 'THE SALVAGE YARD', coordinate: 'OLD ROUTE 9 · 20:38', index: 2, x: 0, y: 1, description: 'Spare parts. Stale gas. Very sharp teeth.', arrival: 'One man’s scrap heap is another man’s way out of town.', spawn: [57, 89] },
+  proving:BUNNY_SCENE,
   corley: { name: 'Corley Motors', short: 'CORLEY MOTORS', coordinate: 'CORLEY INDUSTRIAL PARK · 23:07', index: 3, x: 1, y: 1, description: 'The shareholders are waiting. So is the truth.', arrival: 'Ripburger has an audience. Time to give him something to talk about.', spawn: [45, 90] }
 };
 
 const flagNames = ['keysFound','workshopUnlocked','hoseTaken','jerkyTaken','canTaken','wrenchTaken','magnetTaken','fuseTaken','dogFed','hoseConnected','forksTaken','forksInstalled','fueled','tightened','repaired','filmClue','filmFound','tapeFound','cabinetOpen','powerOn','codeKnown','terminalUnlocked','filmLoaded','tapeLoaded','won'];
+flagNames.push(...BUNNY_FLAGS);
 export const milestones = ['keysFound','workshopUnlocked','dogFed','forksTaken','hoseConnected','forksInstalled','fueled','tightened','filmFound','tapeFound','cabinetOpen','powerOn','terminalUnlocked','filmLoaded','tapeLoaded','won'];
 
 export function newGame(now = Date.now()) {
-  return { version: 1, scene: 'kickstand', inventory: [], flags: {}, visited: ['kickstand'], journal: ['Woke up behind the Kickstand. The Polecats have disappeared with a man named Ripburger. First: find my keys.'], heardSpeech: [], actions: 0, hints: 0, startedAt: now, savedAt: now, finishedAt: null };
+  return { version: 1, scene: 'kickstand', inventory: [], flags: {bunnyChapter:true}, visited: ['kickstand'], journal: ['Woke up behind the Kickstand. The Polecats have disappeared with a man named Ripburger. First: find my keys.'], heardSpeech: [], actions: 0, hints: 0, startedAt: now, savedAt: now, finishedAt: null };
 }
 
 export function validateSave(raw) {
@@ -44,6 +48,19 @@ export function validateSave(raw) {
   if (raw.scene === 'corley' && !raw.flags.repaired) throw new Error('The save location does not match your bike repairs.');
   const result = newGame(raw.startedAt);
   for (const key of Object.keys(result)) if (key !== 'heardSpeech' || raw.heardSpeech !== undefined) result[key] = structuredClone(raw[key]);
+  // Saves made before this chapter retain already-earned factory access.
+  if(!Object.hasOwn(raw.flags,'bunnyChapter')){
+    result.flags.bunnyChapter=true;
+    if(raw.scene==='corley'||raw.visited.includes('corley')||raw.flags.won){
+      result.flags.minefieldCleared=true;
+      for(let i=1;i<=4;i++)result.flags['bunny'+i]=true;
+    }
+  }
+  const steps=bunnyProgress(result);
+  if([1,2,3,4].some(i=>!!result.flags['bunny'+i] !== (i<=steps)) || !!result.flags.minefieldCleared !== (steps===4))throw new Error('В сохранении повреждён путь через полигон.');
+  if(result.scene==='proving'&&!result.flags.repaired)throw new Error('До полигона нужен исправный байк.');
+  if(result.scene==='corley'&&!result.flags.minefieldCleared)throw new Error('В сохранении не открыт служебный путь.');
+  if(result.inventory.includes('bunnies') !== (!!result.flags.bunniesTaken&&!result.flags.minefieldCleared))throw new Error('В сохранении повреждена коробка зайцев.');
   return result;
 }
 
@@ -73,6 +90,7 @@ export function objective(s) {
   if (!f.repaired) return 'Repair the forks, fill the tank, tighten the axle.';
   if (!f.filmFound) return 'Find the photographer’s evidence.';
   if (!f.tapeFound) return 'Show Mo what really happened to her father.';
+  if (!f.minefieldCleared) return bunnyObjective(s);
   if (!f.powerOn) return 'Restore power to Corley’s broadcast terminal.';
   if (!f.terminalUnlocked) return 'Find a way into the broadcast terminal.';
   if (!f.filmLoaded || !f.tapeLoaded) return 'Load the photos and Corley’s last will.';
@@ -80,7 +98,7 @@ export function objective(s) {
 }
 
 export function accessible(s, scene) {
-  return Object.hasOwn(SCENES,scene) && (scene === 'kickstand' || (scene === 'corley' ? !!s.flags.repaired : !!s.flags.workshopUnlocked));
+  return Object.hasOwn(SCENES,scene) && (scene === 'kickstand' || (['corley','proving'].includes(scene) ? !!s.flags.repaired : !!s.flags.workshopUnlocked));
 }
 
 function note(s, line) { if (!s.journal.includes(line)) s.journal.push(line); }
@@ -95,6 +113,7 @@ function award(s, flag, item, text, speaker = 'BEN') {
 }
 
 export function objects(s) {
+  if(s.scene==='proving')return bunnyObjects(s);
   const f = s.flags;
   const object = (id,name,x,y,w,h) => ({id,name,x,y,w,h});
   if (s.scene === 'kickstand') return [
@@ -128,6 +147,7 @@ export function objects(s) {
 }
 
 export function travel(s, destination) {
+  if(destination==='corley'&&s.flags.repaired&&!s.flags.minefieldCleared)destination='proving';
   if (!accessible(s,destination)) return say(destination === 'corley' ? 'Corley’s is fifty miles away. I need a working motorcycle first.' : 'I need my keys before I go wandering off. They have to be around here.');
   if (s.scene === destination) return say('Already here. Still not getting paid by the hour.');
   s.scene = destination;
@@ -151,6 +171,8 @@ export function interact(s, target, verb = 'look', item = null) {
   if (item && !s.inventory.includes(item)) return say('I don’t have that.');
   s.actions++;
   const f = s.flags;
+  if(s.scene==='proving'&&target==='serviceGate'&&verb==='use'&&!item&&f.minefieldCleared)return travel(s,'corley');
+  const bunnyResult=bunnyInteract(s,target,verb,item);if(bunnyResult)return bunnyResult;
   if (item) return useItem(s,target,item);
   if (verb === 'talk') {
     if (target === 'bartender' || target === 'bar') return conversation(s,'bartender');
@@ -306,6 +328,7 @@ export function conversation(s, who) {
 }
 
 export function choose(s, choice) {
+  const bunnyResult=bunnyChoose(s,choice);if(bunnyResult)return bunnyResult;
   const f = s.flags;
   const npc = {kickstand:'bartender',garage:'mo',corley:'guard'}[s.scene];
   const valid = new Set(npc ? conversation(s,npc).choices.map(c=>c.id) : []);
@@ -348,6 +371,7 @@ export function hint(s, level=0) {
     else hints=['An engine is only as good as the bolts holding it together.','The new front axle needs tightening. Mo’s workbench has a wrench.','Use Mo’s workbench → Take the wrench. Select Wrench in your pockets, then click the motorcycle.'];
   } else if (!f.filmFound) hints=['A photographer saw what happened. Try asking at the Kickstand.','A photo tin is trapped behind the dumpster grate. Mo has something that can reach it.','Use Mo’s workbench → Take the pickup magnet. Return to the Kickstand, select magnet, and click the dumpster.'];
   else if (!f.tapeFound) hints=['Mo deserves to see what really happened.','Show the photos to Maureen. Don’t just talk about them.','At Mo’s garage, select Evidence photos in your pockets and click Maureen. She will give you Corley’s tape.'];
+  else if (!f.minefieldCleared) hints=bunnyHints(s);
   else if (!f.powerOn) hints=['A dead terminal needs electricity before it needs a password.','The power cabinet is bolted shut and its fuse is blown. Mo’s workbench has both things you need.','Take the wrench and spare fuse from Mo’s workbench. At Corley Motors: use wrench on cabinet, then fuse on cabinet.'];
   else if (!f.terminalUnlocked) hints=['Corley put his history on the wall. The guard knows why it matters.','Look at the memorial plaque. His first winning race number is the terminal PIN.','Select Use and click the service terminal. Enter 2040.'];
   else if (!f.filmLoaded || !f.tapeLoaded) hints=['You have two pieces of evidence and one very large audience.','The terminal has a photo scanner and a tape deck. Use both inventory items on it.','Select Evidence photos → broadcast terminal. Select Corley’s tape → broadcast terminal.'];
@@ -365,6 +389,7 @@ export function quests(s) {
     ['Tighten the axle and repair the bike',f.repaired],
     ['Recover the photographer’s evidence',f.filmFound],
     ['Show Mo the photos; get Corley’s will',f.tapeFound],
+    ['Достать зайцев и пройти испытательный полигон',f.minefieldCleared],
     ['Power up and unlock the service terminal',f.terminalUnlocked],
     ['Expose Ripburger at the shareholders’ meeting',f.won]
   ];

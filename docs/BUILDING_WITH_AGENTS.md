@@ -168,7 +168,7 @@ The runtime only needs a catalogue mapping stable IDs and dialogue text to local
 
 Track a line as heard when playback actually starts. A failed, muted, or cancelled attempt should not consume the first automatic playback. A manual replay button gives the player control over repeated lines. Test late audio callbacks: an old request must never stop a newer line or mark a new playthrough as heard.
 
-The public project ships 182 final WAV files. It intentionally has no speech-generation command; use your own provider setup if you want to author new speech.
+The public project ships 236 final WAV files. It intentionally has no speech-generation command; use your own provider setup if you want to author new speech.
 
 ## 8. Use checkpoints that can be inspected and reversed
 

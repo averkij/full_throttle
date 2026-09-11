@@ -12,7 +12,7 @@ Full Throttle and its characters belong to their respective owners. This project
 
 - The background paintings, highway opening, interface texture, portraits, sprites, and walking frames were generated and prepared for this game. No original game asset files or screenshots are bundled.
 - The electrical cabinet has separate closed, open, and powered states. The collectible fork is separate from the cleaned background, so taking it removes its visible image.
-- All 182 Russian dialogue recordings were generated during development using Gemini 3.1 Flash TTS through OpenRouter. The browser plays the resulting local WAV files; it does not contact a synthesis provider.
+- All 236 Russian dialogue recordings were generated during development using Gemini 3.1 Flash TTS through OpenRouter. The browser plays the resulting local WAV files; it does not contact a synthesis provider.
 - Character voices were kept consistent: Ben — Algenib, Mo — Kore, bartender — Puck, guard — Charon; terminal lines use Iapetus. These are synthetic performances, not recordings of the original cast.
 - Music and effects are synthesized by the game's JavaScript. No commercial soundtrack files are included.
 

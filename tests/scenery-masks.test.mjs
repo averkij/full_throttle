@@ -11,7 +11,7 @@ test('Scenery masks scale with the exact source image and remain within all four
     assert.deepEqual([box.x,box.y,box.w,box.h],definition.bounds.map(value=>value/2));
     assert.ok(definition.path.startsWith('M '));
   }
-  assert.equal(count,10);assert.equal(sceneryBox('yard','not-an-object'),null);
+  assert.equal(count,14);assert.equal(sceneryBox('yard','not-an-object'),null);
 });
 
 test('Scenery selection shares the visible alpha, including holes, and reuses its cached mask',()=>{

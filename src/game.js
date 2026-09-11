@@ -9,6 +9,7 @@ import { createVoicePlayer } from './voice-player.js';
 import { openingNarration,restoredNarration } from './narration.js';
 import { createIntro } from './intro.js';
 import { createInventoryCursor,drawInventoryCursor } from './inventory-cursor.js';
+import {bunnyProgress} from './bunny-quest.js';
 
 
 const $=id=>document.getElementById(id);
@@ -45,6 +46,7 @@ const contextMenu=createContextMenu({
   onTargetChange:setHighlight,
   getActions:id=>objectActions(id,selected?{id:selected,name:t(ITEMS[selected].name)}:null),
   onAction:(id,action)=>{
+    if(renderer.isBusy())return;
     const obj=objects(state).find(object=>object.id===id);
     if(!obj)return;
     verb=action.verb;selected=action.item||null;
@@ -108,6 +110,10 @@ function playVoice(){
 }
 function sound(kind){
   const effectsGain=1.5;
+  if(kind==='bunny'){
+    [659,784,880,784,659,523].forEach((n,i)=>playTone(n,.13,'square',.012,i*.25));
+    playTone(55,.38,'sawtooth',.11,1.9);playTone(92,.23,'triangle',.07,1.93);return;
+  }
   if(kind==='engine'){[55,73,98,110,146].forEach((n,i)=>playTone(n,.2,'sawtooth',.04*effectsGain,i*.12));}
   else if(kind==='victory'){[164.81,196,220,293.66,329.63].forEach((n,i)=>playTone(n,.6,'triangle',.09*effectsGain,i*.17));}
   else playTone(kind==='item'?440:165,.08,'triangle',.04*effectsGain);
@@ -143,6 +149,7 @@ function syncHitboxes(){
   }
 }
 function activateObject(event,keyboardId=null){
+  if(renderer.isBusy())return;
   const id=event.detail===0?keyboardId:pickObject(event);
   const obj=objects(state).find(object=>object.id===id);
   hideCaption();
@@ -157,11 +164,13 @@ function renderControls(){
   const inventory=$('inventory');inventory.replaceChildren();
   if(!state.inventory.length){inventory.innerHTML='<div class="inventory-empty"><span class="empty-slot">+</span><span>Пока пусто. Всё нужное найдётся по дороге.</span></div>';return;}
   for(const id of state.inventory){const button=document.createElement('button');button.className='inventory-item';button.classList.toggle('selected',selected===id);button.setAttribute('aria-pressed',String(selected===id));button.setAttribute('aria-label',`Использовать: ${t(ITEMS[id].name)}`);button.title=`${t(ITEMS[id].name)} — ${t(ITEMS[id].description)}`;const canvas=document.createElement('canvas');canvas.width=120;canvas.height=108;canvas.setAttribute('aria-hidden','true');drawItem(canvas,id);button.append(canvas);
+    if(id==='bunnies'){const count=document.createElement('span');count.className='item-remaining';count.textContent=String(4-bunnyProgress(state));count.setAttribute('aria-label','Осталось зайцев: '+count.textContent);button.append(count);}
     button.addEventListener('click',()=>{selected=selected===id?null:id;verb='use';renderControls();updateHover();if(selected)dialogue({text:ITEMS[id].description,speaker:'BEN'});sound('click');});
     button.addEventListener('mouseenter',()=>{$('hover-label').textContent=t(ITEMS[id].description);});button.addEventListener('mouseleave',()=>updateHover());inventory.append(button);}
 }
 function renderScene(){
   contextMenu.close();
+  $('scene').dataset.location=state.scene;
   const data=SCENES[state.scene];
   $('scene-name').textContent=t(data.name);
   $('objective-text').textContent=t(objective(state));
@@ -174,18 +183,19 @@ function renderScene(){
   }
   syncHitboxes();
   const edges=$('travel-edges');edges.replaceChildren();
-  const destination=state.scene==='kickstand'?'garage':state.scene==='garage'?'yard':state.scene==='yard'?'garage':'kickstand';
+  const destination=state.scene==='proving'&&state.flags.minefieldCleared?'corley':state.scene==='kickstand'?'garage':state.scene==='garage'?'yard':state.scene==='yard'?'garage':'kickstand';
   if(accessible(state,destination)){const button=document.createElement('button');button.className='travel-link';button.textContent=t(SCENES[destination].name);button.append(icon('arrow'));button.addEventListener('click',()=>go(destination));edges.append(button);}
   renderControls();
 }
 function dialogue(result,{autoplay=true}={}){
   $('dialogue-text').textContent=t(result.text);$('speaker').textContent=t(result.speaker||'BEN');drawPortrait($('portrait-canvas'),result.speaker);
   const choices=$('dialogue-choices');choices.replaceChildren();
-  for(const choice of result.choices||[]){const button=document.createElement('button');button.className='dialogue-choice';button.textContent=t(choice.label);button.addEventListener('click',()=>{hideCaption();apply(choose(state,choice.id));});choices.append(button);}
+  for(const choice of result.choices||[]){const button=document.createElement('button');button.className='dialogue-choice';button.textContent=t(choice.label);button.addEventListener('click',()=>{if(renderer.isBusy())return;hideCaption();apply(choose(state,choice.id));});choices.append(button);}
   $('dialogue-text').parentElement.scrollTop=0;
   speech.setLine(result.speaker||'BEN',t(result.text),{autoplay});
 }
 function apply(result){
+  if(result.effect){renderer.playEffect(result);if(result.effect==='bunny')sound('bunny');}
   if(selected&&!state.inventory.includes(selected))selected=null;
   renderScene();dialogue(result);save();updateHover();
   if(result.toast){toast(result.toast);sound('item');}
@@ -202,7 +212,13 @@ function openModal(content,eyebrow='FULL THROTTLE',keepSpeech=false){if(!keepSpe
 function closeModal(){speech.stop();if($('modal').open)$('modal').close();}
 $('modal').addEventListener('close',()=>{speech.stopPreview();if(lastFocus?.isConnected)lastFocus.focus();});
 $('modal').addEventListener('click',event=>{if(event.target===$('modal')){const r=$('modal').getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)closeModal();}});
-function openMap(){openModal(`<h2 id="modal-title">Выбирай дорогу.</h2><p class="modal-intro">${state.flags.workshopUnlocked?'Несколько километров пустыни. Неприятностей хватит на всех.':'Ключи всё ещё у «Кикстэнда». Найди их, чтобы отправиться в путь.'}</p><div class="map-locations">${Object.entries(SCENES).map(([id,data])=>`<button class="map-card ${id===state.scene?'active':''}" data-travel="${id}" ${!accessible(state,id)?'disabled':''}><span class="map-thumbnail" style="background-position:${data.x*100}% ${data.y*100}%"></span><span class="map-card-body"><strong>${escape(t(data.name))}</strong><small>${id===state.scene?'ВЫ ЗДЕСЬ':!accessible(state,id)?id==='corley'?'СНАЧАЛА ПОЧИНИ БАЙК':'СНАЧАЛА НАЙДИ КЛЮЧИ':state.visited.includes(id)?'ВЕРНУТЬСЯ':'ОТПРАВИТЬСЯ'}</small></span></button>`).join('')}</div><p class="notice">${state.flags.workshopUnlocked&&!state.flags.repaired?'До бара, гаража и свалки можно дойти пешком. До завода Корли нужен исправный байк.':'Все предметы и прогресс останутся с тобой.'}</p>`,'СТАРОЕ ШОССЕ № 9 · КАРТА');}
+function mapStatus(id){
+  if(id===state.scene)return 'ВЫ ЗДЕСЬ';
+  if(!accessible(state,id))return ['corley','proving'].includes(id)?'СНАЧАЛА ПОЧИНИ БАЙК':'СНАЧАЛА НАЙДИ КЛЮЧИ';
+  if(id==='corley'&&!state.flags.minefieldCleared)return 'ЧЕРЕЗ ПОЛИГОН';
+  return state.visited.includes(id)?'ВЕРНУТЬСЯ':'ОТПРАВИТЬСЯ';
+}
+function openMap(){openModal(`<h2 id="modal-title">Выбирай дорогу.</h2><p class="modal-intro">${state.flags.workshopUnlocked?'Несколько километров пустыни. Неприятностей хватит на всех.':'Ключи всё ещё у «Кикстэнда». Найди их, чтобы отправиться в путь.'}</p><div class="map-locations">${Object.entries(SCENES).map(([id,data])=>`<button class="map-card ${id===state.scene?'active':''}" data-travel="${id}" ${!accessible(state,id)?'disabled':''}><span class="map-thumbnail" style="background-position:${data.x*100}% ${data.y*100}%"></span><span class="map-card-body"><strong>${escape(t(data.name))}</strong><small>${mapStatus(id)}</small></span></button>`).join('')}</div><p class="notice">${state.flags.workshopUnlocked&&!state.flags.repaired?'До бара, гаража и свалки можно дойти пешком. До завода Корли нужен исправный байк.':'Все предметы и прогресс останутся с тобой.'}</p>`,'СТАРОЕ ШОССЕ № 9 · КАРТА');}
 function openJournal(){openModal(`<h2 id="modal-title">Дорожные заметки.</h2><p class="modal-intro">${escape(t(objective(state)))}</p><ul class="journal-quests">${quests(state).map(([text,done])=>`<li class="${done?'completed':''}"><span class="quest-check">${done?'✓':''}</span>${escape(t(text))}</li>`).join('')}</ul><h3>Как всё было</h3><div class="journal-log">${state.journal.map(line=>`<p>${escape(t(line))}</p>`).join('')}</div>`,'ЖУРНАЛ БЕНА');}
 function openHint(){
   const current=objective(state);if(current!==lastHint){hintLevel=0;lastHint=current;}
@@ -213,7 +229,7 @@ function openMenu(){openModal(`<h2 id="modal-title">Переведи дух.</h2
 function openControls(){openModal('<h2 id="modal-title">Меньше разговоров.<br>Больше газа.</h2><p class="modal-intro">Ты — Бен, вожак «Хорьков». Кто-то испортил твой байк и подставил банду. Исследуй четыре локации, почини мотоцикл и выведи правду на большой экран завода Корли.</p><dl class="controls-list"><dt>Правая кнопка мыши</dt><dd>Нажми на человека или предмет правой кнопкой: рядом появятся действия. Выбери «Поговорить», «Взять», «Осмотреть» или «Пнуть». Выбранный предмет из кармана тоже появится в меню.</dd><dt>Удержание / Shift + F10</dt><dd>На сенсорном экране удерживай объект. С клавиатуры: Tab до объекта, Shift + F10 — меню, стрелки — выбор, Enter — действие, Esc — закрыть.</dd><dt>1 · Осмотр</dt><dd>Осматривай людей и предметы в поисках зацепок.</dd><dt>2 · Действие</dt><dd>Бери предметы, открывай двери и пользуйся механизмами.</dd><dt>3 · Говорить</dt><dd>Нажми на персонажа и выбери реплику.</dd><dt>4 · Пнуть</dt><dd>Когда заклинившему контейнеру нужен веский аргумент.</dd><dt>Инвентарь</dt><dd>Выбери предмет, затем нажми на его цель в сцене. Повторный щелчок по предмету или Esc снимает выбор.</dd><dt>F / Esc</dt><dd>Развернуть игру на весь экран / выйти. На устройствах без поддержки — режим без лишних панелей.</dd><dt>M / J / H</dt><dd>Открыть карту, журнал или подсказку. Работает и в русской раскладке.</dd><dt>Касание / Tab</dt><dd>Можно играть касаниями или с клавиатуры. Tab переключает объекты, Enter выполняет действие.</dd></dl><p class="notice">Таймеров и тупиков нет. Неверные сочетания не уничтожают предметы. Прогресс сохраняется автоматически.</p><button class="primary-button" data-action="close">Поехали →</button>','КАК ИГРАТЬ');}
 function openAbout(){openModal('<h2 id="modal-title">Создано для дороги.</h2><p class="modal-intro">«Байк обреченный» — небольшое фанатское приключение по мотивам Full Throttle от LucasArts (1995). Играй за Бена, чини «Корли» вместе с Мо и разоблачи Рипбургера.</p><p class="modal-intro">Новый квест из четырёх локаций с собственными диалогами и головоломками, детальными сгенерированными персонажами, предметами и фонами. Музыка синтезируется в браузере. Реплики персонажей и терминала озвучены ИИ с постоянными голосами и собственной манерой речи. Записи воспроизводятся из локальных файлов. Файлы, записи и графика оригинальной игры не используются.</p><p class="modal-intro">Full Throttle и персонажи принадлежат правообладателям. Фанатский проект не связан с Lucasfilm, LucasArts или Double Fine. Полная оригинальная история доступна в официальном издании.</p><div class="about-links"><a href="https://www.doublefine.com/games/full-throttle-remastered" target="_blank" rel="noopener noreferrer">Официальная Full Throttle Remastered · Double Fine ↗</a><br><a href="https://www.doublefine.com/news/announcing-full-throttle-remastered" target="_blank" rel="noopener noreferrer">О графике и создании ремастера ↗</a></div><p class="notice">Шрифты Golos Text и Oswald распространяются по лицензии SIL OFL. После загрузки игра не требует аккаунта или подключения к сети.</p>','ОБ ЭТОЙ ПОЕЗДКЕ');}
 function openKeypad(keepSpeech=false){openModal('<h2 id="modal-title">Служебный доступ.</h2><p class="modal-intro">«КОРЛИ МОТОРС» · СИСТЕМА ПРЕЗЕНТАЦИЙ<br>Введи четырёхзначный код доступа.</p><form id="keypad-form"><label class="eyebrow" for="service-code">КОД ДОСТУПА</label><p style="height:12px"></p><input class="code-input" id="service-code" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" autocomplete="off" placeholder="····" required aria-describedby="code-message"><p class="code-message" id="code-message" role="status"></p><button class="primary-button" type="submit" style="width:100%">Открыть терминал →</button></form>','ПРОМЫШЛЕННЫЕ СИСТЕМЫ КОРЛИ',keepSpeech);$('service-code').focus();}
-function openEnding(keepSpeech=false){const minutes=Math.max(1,Math.round(((state.finishedAt||Date.now())-state.startedAt)/60000));openModal(`<h2 id="modal-title">Свободу не запереть<br>в клетке.</h2><div class="ending-art"></div><p class="modal-intro">На экране появляются снимки Миранды. Затем звучит голос Малкольма: он называет Морин своей наследницей. Идеальная ложь Рипбургера рассыпается на глазах у всех акционеров.</p><p class="modal-intro">С «Хорьков» сняты обвинения. Мо получает ключи от «Корли Моторс». На парковке ждёт банда, мерно рокочут двигатели. Мо кивает. Ты выкручиваешь ручку газа.</p><p class="hint-content">«Ты строй их, Мо.<br>А я буду на них ездить».</p><div class="ending-stats"><div class="ending-stat"><strong>4 / 4</strong>МЕСТА ИССЛЕДОВАНЫ</div><div class="ending-stat"><strong>${minutes} МИН</strong>В ДОРОГЕ</div><div class="ending-stat"><strong>${state.hints}</strong>ПОДСКАЗОК</div></div><div class="modal-actions"><button class="primary-button" data-action="close">Остаться ещё ненадолго →</button><button class="secondary-button" data-action="restart">Проехать заново</button></div>`,'КОНЕЦ · ДОРОГА ПРОДОЛЖАЕТСЯ',keepSpeech);}
+function openEnding(keepSpeech=false){const minutes=Math.max(1,Math.round(((state.finishedAt||Date.now())-state.startedAt)/60000));openModal(`<h2 id="modal-title">Свободу не запереть<br>в клетке.</h2><div class="ending-art"></div><p class="modal-intro">На экране появляются снимки Миранды. Затем звучит голос Малкольма: он называет Морин своей наследницей. Идеальная ложь Рипбургера рассыпается на глазах у всех акционеров.</p><p class="modal-intro">С «Хорьков» сняты обвинения. Мо получает ключи от «Корли Моторс». На парковке ждёт банда, мерно рокочут двигатели. Мо кивает. Ты выкручиваешь ручку газа.</p><p class="hint-content">«Ты строй их, Мо.<br>А я буду на них ездить».</p><div class="ending-stats"><div class="ending-stat"><strong>${state.visited.length} / ${Object.keys(SCENES).length}</strong>МЕСТА ИССЛЕДОВАНЫ</div><div class="ending-stat"><strong>${minutes} МИН</strong>В ДОРОГЕ</div><div class="ending-stat"><strong>${state.hints}</strong>ПОДСКАЗОК</div></div><div class="modal-actions"><button class="primary-button" data-action="close">Остаться ещё ненадолго →</button><button class="secondary-button" data-action="restart">Проехать заново</button></div>`,'КОНЕЦ · ДОРОГА ПРОДОЛЖАЕТСЯ',keepSpeech);}
 function confirmRestart(){openModal('<h2 id="modal-title">Полный бак.<br>Новое начало.</h2><p class="modal-intro">Текущее автосохранение будет заменено, а игра начнётся у «Кикстэнда». Если хочешь оставить эту поездку, сначала экспортируй сохранение.</p><div class="modal-actions"><button class="secondary-button" data-action="export">Сначала экспортировать сохранение</button><button class="primary-button" data-action="confirm-restart">Начать новую поездку</button><button class="secondary-button" data-action="menu">Продолжить текущую поездку</button></div>','НОВАЯ ИГРА');}
 function restart(){openingPending=true;state=newGame();speech.setHeardSpeech(state.heardSpeech);selected=null;verb='look';saveBlocked=false;hintLevel=0;lastHint='';closeModal();renderScene();dialogue({speaker:'BEN',text:openingNarration},{autoplay:false});save();hideCaption();intro.open({saved:false});}
 function exportSave(){const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=`full-throttle-save-${new Date().toISOString().slice(0,10)}.json`;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Сохранение экспортировано. Спрячь его в надёжном месте.');}

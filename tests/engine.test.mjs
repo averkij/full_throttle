@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
 import { newGame,interact,choose,travel,submitCode,validateSave,saveGame,loadGame,SAVE_KEY,objects,accessible,hint,quests,milestones,objective } from '../src/engine.js';
 import {sceneSprites,CABINET_FRAMES} from '../src/scene-layout.js';
 import {SCENERY_MASKS} from '../src/scenery-masks.js';
@@ -9,7 +10,7 @@ import {normalizeSpeech} from '../src/voice-player.js';
 import {restoredNarration} from '../src/narration.js';
 import {t} from '../src/ru.js';
 const recorded=new Set(VOICE_SAMPLES.map(line=>line.speaker+'\n'+normalizeSpeech(line.text)));
-const assertRecorded=(speaker,text)=>assert.ok(recorded.has(speaker+'\n'+normalizeSpeech(t(text))),`Missing voice: ${speaker}: ${t(text)}`);
+const assertRecorded=(speaker,text)=>{const key=speaker+'\n'+normalizeSpeech(t(text));assert.ok(recorded.has(key),`Missing voice: ${speaker}: ${t(text)}`);};
 
 const memory=()=>{const data=new Map();return {getItem:key=>data.get(key)??null,setItem:(key,value)=>data.set(key,value)};};
 
@@ -34,11 +35,13 @@ function journey({fuelFirst=false,earlyTools=false,saveEveryStep=false}={}) {
   if(!earlyTools)pick('magnet');
   go('kickstand');pick('photographer');use('dumpster','magnet');
   go('garage');use('mo','film');if(!earlyTools)pick('fuse');
-  go('corley');use('cabinet','wrench');use('cabinet','fuse');act(s=>interact(s,'plaque','look'));
+  go('corley');assert.equal(s.scene,'proving');use('remote');pick('car_reverse');use('kiosk','kioskKey');use('bunnyBox');
+  for(let i=0;i<4;i++)use('minefield','bunnies');
+  use('serviceGate');assert.equal(s.scene,'corley');use('cabinet','wrench');use('cabinet','fuse');act(s=>interact(s,'plaque','look'));
   act(s=>submitCode(s,'2040'));use('terminal','film');use('terminal','tape');const ending=use('terminal');
   assert.equal(ending.won,true);assert.equal(s.flags.won,true);assert.ok(s.finishedAt>=s.startedAt);
   assert.equal(milestones.filter(key=>s.flags[key]).length,milestones.length);
-  assert.equal(quests(s).filter(([,done])=>done).length,8);
+  assert.equal(quests(s).filter(([,done])=>done).length,9);
   assert.equal(s.inventory.includes('wrench'),true);assert.equal(s.inventory.includes('film'),true);
   return s;
 }
@@ -90,7 +93,7 @@ test('Collecting the fork removes both its scene sprite and hotspot, including a
 });
 test('Cabinet artwork follows opening and fuse installation, preserving each state after reload',()=>{
   let s=newGame();const store=memory();
-  s.scene='corley';s.flags.workshopUnlocked=true;s.flags.repaired=true;s.inventory=['wrench','fuse'];
+  s.scene='corley';s.flags.workshopUnlocked=true;s.flags.repaired=true;s.flags.minefieldCleared=true;for(let i=1;i<=4;i++)s.flags['bunny'+i]=true;s.inventory=['wrench','fuse'];
   const check=stage=>{
     for(const stretch of [.6,1,2.4]){
       const sprite=sceneSprites(s,stretch).find(sprite=>sprite.id==='cabinet');

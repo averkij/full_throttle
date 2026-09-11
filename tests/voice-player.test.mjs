@@ -4,7 +4,7 @@ import {readFile} from 'node:fs/promises';
 import {runInNewContext} from 'node:vm';
 import {VOICE_SAMPLES} from '../src/voice-samples.js';
 import {createVoicePlayer} from '../src/voice-player.js';
-import {newGame,interact,submitCode,saveGame,loadGame,validateSave} from '../src/engine.js';
+import {newGame,interact,submitCode,saveGame,loadGame,validateSave,SCENES} from '../src/engine.js';
 import {t} from '../src/ru.js';
 
 const flush=()=>new Promise(resolve=>setImmediate(resolve));
@@ -102,7 +102,7 @@ test('Game keeps terminal and ending speech through their automatic dialogs, and
     return elements.get(id);
   };
   const state=newGame();state.scene='corley';state.flags={workshopUnlocked:true,repaired:true,powerOn:true};
-  const context={$,state,speech,t,selected:null,lastFocus:null,document:{activeElement:null,createElement:()=>({addEventListener(){}})},drawPortrait(){},renderScene(){},renderControls(){},save(){},updateHover(){},toast(){},sound(){},contextMenu:{close(){}}};
+  const context={$,state,SCENES,speech,t,selected:null,lastFocus:null,document:{activeElement:null,createElement:()=>({addEventListener(){}})},drawPortrait(){},renderScene(){},renderControls(){},save(){},updateHover(){},toast(){},sound(){},contextMenu:{close(){}}};
   // Execute the actual game handlers with a small DOM/audio harness. This catches
   // a modal accidentally cancelling the line that caused it to open.
   const multi=name=>game.match(new RegExp('function '+name+'\\([\\s\\S]*?\\n}'))?.[0];

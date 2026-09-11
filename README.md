@@ -2,7 +2,7 @@
 
 A Russian-language point-and-click fan adventure about a broken motorcycle, a missing gang, and a very bad deal.
 
-Explore four illustrated locations as Ben, repair the bike, collect evidence, and expose Ripburger. This is a small, newly authored adventure inspired by *Full Throttle*, built through an iterative collaboration between a human and coding agents.
+Explore five illustrated locations as Ben, repair the bike, collect evidence, and expose Ripburger. This is a small, newly authored adventure inspired by *Full Throttle*, built through an iterative collaboration between a human and coding agents.
 
 **[Play on GitHub Pages](https://averkij.github.io/full_throttle/)** · **[Build a similar game with agents](docs/BUILDING_WITH_AGENTS.md)** · **[Credits](CREDITS.md)**
 
@@ -10,8 +10,9 @@ Explore four illustrated locations as Ben, repair the bike, collect evidence, an
 
 ## The game
 
-- Four locations, a complete puzzle chain, branching conversations, a journal, hints, and an ending.
-- Russian text and 182 prerecorded dialogue lines, with different voices for the characters.
+- Five locations, a complete puzzle chain, branching conversations, a journal, hints, and an ending.
+- A Smashtorium toy-car puzzle and four toy bunnies to clear the factory minefield.
+- Russian text and 236 prerecorded dialogue lines, with different voices for the characters.
 - Illustrated backgrounds, transparent character and item sprites, an eight-frame walking animation, and object-shaped highlights.
 - An opening cinematic, synthesized music and effects, and a New Rocker title from Google Fonts.
 - Mouse, touch, keyboard, fullscreen, and reduced-motion support.

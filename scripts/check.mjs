@@ -17,7 +17,7 @@ for (const folder of ['src', 'scripts', 'tests']) {
   }
 }
 const credentials = [
-  /sk-(?:or-v1-|proj-)?[A-Za-z0-9_-]{20,}/,
+  /(?<![A-Za-z0-9_-])sk-(?:or-v1-|proj-)?[A-Za-z0-9_-]{20,}/,
   /github_pat_[A-Za-z0-9_]{20,}/,
   /gh[pousr]_[A-Za-z0-9]{20,}/,
   /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/
